@@ -33,18 +33,28 @@ or Retropex/electrs branch `mempool` for the esplora-style server.
 | Chain tips | Skips the canonical lookup for stale blocks above the active tip, where `getblockhash` throws |
 | Mining pools | DATUM pools matched first and flagged from the pools list, rather than hardcoding a single pool name |
 | Prices | Fiat price derived as `BTC/<fiat> × BTCB2/BTC`, the cross rate taken from [NeoxEX](https://neoxa.exchange), held for up to six hours across a failed fetch |
-| Replay risk | Classified server-side from each input's funding height, since a replay needs the inputs to exist on the SHA256d chain. Exposed as transaction flags, so clients need not re-derive it |
+| Replay risk | Classified server-side from whether any input was minted by a post-fork coinbase, and from SIGHASH_UNIFIED signatures in standard scripts. Exposed as transaction flags, so clients need not re-derive it |
 
 ### Frontend
 
 BLAKE2b header fields and a chain badge on block pages; SIGHASH_UNIFIED colours
 and filter; hashrate in PH/s; no minimum share threshold hiding small pools.
 
-The transaction features row carries a replay-protection badge, shown only where
-the question applies. Outputs created at or after the fork do not exist on the
-SHA256d chain, so spending one makes a replay impossible and no badge appears.
-For transactions spending pre-fork outputs the badge is green when a
-SIGHASH_UNIFIED signature protects them, red when none does.
+The transaction features row carries a replay-protection badge:
+
+| Transaction | Badge |
+|---|---|
+| Any input minted by a coinbase at or after the fork | none: that input does not exist on the SHA256d chain, so a replay is impossible |
+| Otherwise, with a SIGHASH_UNIFIED signature in a standard script | green, *Replay protected* |
+| Otherwise | red, struck through |
+
+A post-fork output that is not from a coinbase can still exist on the SHA256d chain:
+the transaction that created it may have been replayed there under the same txid.
+Its ancestry is not traced, so the red badge means *may be* replayable, and errs
+towards warning. A unified signature counts only in P2PK, P2PKH, P2WPKH,
+P2SH-P2WPKH, taproot key path, and multisig with exactly m signatures, where it is
+certain to be checked. Transactions confirmed before the fork, and those whose inputs
+were not fetched, show no badge.
 
 ### Database migrations
 

@@ -401,9 +401,10 @@ class BitcoinApi implements AbstractBitcoinApi {
       }
       const innerTx = await this.$getRawTransaction(vin.txid, false, false);
       vin.prevout = innerTx.vout[vin.vout];
-      // Keep the funding height: an input created after the BLAKE2b fork does not exist
-      // on the SHA256d chain, which is what decides whether a replay is possible at all
+      // Keep the funding height and whether it is a coinbase: an output minted by a coinbase
+      // after the BLAKE2b fork does not exist on the SHA256d chain, so spending one rules out a replay
       vin.prevoutHeight = innerTx.status?.confirmed ? innerTx.status.block_height : -1;
+      vin.prevoutCoinbase = !!innerTx.vin[0]?.is_coinbase;
       transactionUtils.addInnerScriptsToVin(vin);
       addedPrevouts = true;
     }
@@ -451,6 +452,7 @@ class BitcoinApi implements AbstractBitcoinApi {
       const innerTx = await this.$getRawTransaction(transaction.vin[i].txid, false, false);
       transaction.vin[i].prevout = innerTx.vout[transaction.vin[i].vout];
       transaction.vin[i].prevoutHeight = innerTx.status?.confirmed ? innerTx.status.block_height : -1;
+      transaction.vin[i].prevoutCoinbase = !!innerTx.vin[0]?.is_coinbase;
       transactionUtils.addInnerScriptsToVin(transaction.vin[i]);
       totalIn += innerTx.vout[transaction.vin[i].vout].value;
     }

@@ -39,6 +39,9 @@ export namespace IEsploraApi {
     // Custom: height of the block funding this input, -1 when still unconfirmed
     // and undefined when the prevout was not fetched. Used to classify replay risk.
     prevoutHeight?: number;
+    // Custom: whether the transaction funding this input is a coinbase, undefined
+    // when the prevout was not fetched. Used to classify replay risk.
+    prevoutCoinbase?: boolean;
   }
 
   interface Issuance {

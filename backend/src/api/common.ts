@@ -686,44 +686,153 @@ export class Common {
   /**
    * Classify whether a transaction could be replayed onto the SHA256d chain.
    *
-   * A replay needs the transaction to be valid there, which needs its inputs to
-   * exist there. Outputs created at or after the fork are absent from that chain,
-   * so a transaction spending only those cannot be replayed however it is signed,
-   * and replay protection is not a property worth reporting: returns null so no
-   * badge is shown.
+   * A replay needs every input to exist on that chain. An output minted by a
+   * coinbase at or after the fork never does, so a transaction spending one
+   * cannot be replayed however it is signed: returns null so no badge is shown.
    *
-   * The question is live only for transactions spending pre-fork outputs, which
-   * exist on both chains. There a single SIGHASH_UNIFIED signature invalidates
-   * the whole transaction on the other chain, since every input must verify.
+   * Any other input may exist there. Spending a pre-fork output obviously can,
+   * but so can spending a post-fork one, since the transaction that created it
+   * may itself have been replayed, under the same txid, onto the SHA256d chain.
+   * Tracing that ancestry is not attempted, so these inputs are treated as
+   * replayable, which errs towards warning rather than towards reassurance.
    *
-   * Returns true when such a transaction has no opted-in signature and is
-   * therefore replayable, false when it is protected by one, and null when the
-   * question does not apply or the inputs' ages are unknown.
+   * A single SIGHASH_UNIFIED signature that is certain to be checked makes the
+   * whole transaction invalid on the other chain, since every input must verify.
+   *
+   * Returns true when the transaction may be replayable, false when it is
+   * protected, and null when the question does not apply or cannot be answered.
    */
-  static getReplayRisk(tx: TransactionExtended, hasUnifiedSighash: boolean): boolean | null {
+  static getReplayRisk(tx: TransactionExtended): boolean | null {
     const forkHeight = Common.blake2bForkHeight();
     if (forkHeight === null) {
       return null;
+    }
+    if (tx.status?.confirmed && tx.status.block_height !== undefined && tx.status.block_height < forkHeight) {
+      return null; // part of the history both chains share, so there is nothing to replay
     }
     if (tx.vin.some(vin => vin.is_coinbase)) {
       return null; // a coinbase spends nothing, so the question does not arise
     }
 
-    let spendsPreFork = false;
     for (const vin of tx.vin) {
-      if (vin.prevoutHeight === undefined) {
-        return null; // prevout not fetched, so the input's age is unknown
+      if (vin.prevoutHeight === undefined || vin.prevoutCoinbase === undefined) {
+        return null; // prevout not fetched, so where the input came from is unknown
       }
-      // -1 marks an unconfirmed funding transaction, which is necessarily post-fork
-      if (vin.prevoutHeight >= 0 && vin.prevoutHeight < forkHeight) {
-        spendsPreFork = true;
+      if (vin.prevoutCoinbase && vin.prevoutHeight >= forkHeight) {
+        return null; // minted on the BLAKE2b chain only, so a replay is impossible
       }
     }
 
-    if (!spendsPreFork) {
-      return null; // every input postdates the fork, so a replay is impossible anyway
+    return !Common.hasCheckedUnifiedSignature(tx);
+  }
+
+  /**
+   * Whether any input carries a SIGHASH_UNIFIED signature in a position where the
+   * script is certain to check it, and a failed check certain to invalidate it.
+   *
+   * Signatures are otherwise found by shape alone, so arbitrary data that happens to
+   * look like one, or a signature in a branch whose failure the script tolerates,
+   * would count as protection it does not give. Only standard templates are trusted:
+   * P2PK, P2PKH, P2WPKH, P2SH-P2WPKH, taproot key path, and bare, P2SH, P2WSH and
+   * P2SH-P2WSH multisig with exactly m signatures.
+   */
+  static hasCheckedUnifiedSignature(tx: TransactionExtended): boolean {
+    for (const vin of tx.vin) {
+      if (vin.prevout?.scriptpubkey_type === 'v1_p2tr') {
+        const witness = vin.witness || [];
+        const hasAnnex = witness.length > 1 && witness[witness.length - 1].startsWith('50');
+        const stack = hasAnnex ? witness.slice(0, -1) : witness;
+        // a key path spend is a lone signature; 65 bytes carries an explicit sighash byte
+        if (stack.length === 1 && stack[0].length === 130 && Common.isUnifiedHashtype(stack[0])) {
+          return true;
+        }
+      } else if (Common.getCheckedEcdsaSignatures(vin).some(sig => Common.isDERSig(sig) && Common.isUnifiedHashtype(sig))) {
+        return true;
+      }
     }
-    return !hasUnifiedSighash;
+    return false;
+  }
+
+  private static isUnifiedHashtype(signature: string): boolean {
+    return ['21', '22', '23', 'a1', 'a2', 'a3'].includes(signature.slice(-2).toLowerCase());
+  }
+
+  /**
+   * ECDSA signatures that a standard template is certain to check, or none if the
+   * input does not match one.
+   */
+  private static getCheckedEcdsaSignatures(vin: IEsploraApi.Vin): string[] {
+    const witness = vin.witness || [];
+    const pushes = Common.getScriptSigPushes(vin.scriptsig);
+    if (pushes === null) {
+      return [];
+    }
+    switch (vin.prevout?.scriptpubkey_type) {
+      case 'p2pk':
+        return pushes.length === 1 && !witness.length ? pushes : [];
+      case 'p2pkh':
+        return pushes.length === 2 && !witness.length ? [pushes[0]] : [];
+      case 'multisig':
+        return !witness.length ? Common.getMultisigSignatures(pushes, vin.prevout.scriptpubkey) : [];
+      case 'v0_p2wpkh':
+        return !pushes.length && witness.length === 2 ? [witness[0]] : [];
+      case 'v0_p2wsh':
+        return !pushes.length ? Common.getMultisigSignatures(witness.slice(0, -1), witness[witness.length - 1]) : [];
+      case 'p2sh': {
+        const redeemScript = pushes[pushes.length - 1] || '';
+        if (pushes.length === 1 && /^0014[0-9a-f]{40}$/i.test(redeemScript)) {
+          return witness.length === 2 ? [witness[0]] : []; // P2SH-P2WPKH
+        }
+        if (pushes.length === 1 && /^0020[0-9a-f]{64}$/i.test(redeemScript)) {
+          return Common.getMultisigSignatures(witness.slice(0, -1), witness[witness.length - 1]); // P2SH-P2WSH
+        }
+        return !witness.length ? Common.getMultisigSignatures(pushes.slice(0, -1), redeemScript) : [];
+      }
+      default:
+        return [];
+    }
+  }
+
+  /**
+   * The signatures of a multisig spend, given the stack items below the script: the
+   * NULLDUMMY empty element then exactly m signatures, all of which CHECKMULTISIG checks.
+   */
+  private static getMultisigSignatures(items: string[], script: string | undefined): string[] {
+    const multisig = script ? parseMultisigScript(transactionUtils.convertScriptSigAsm(script)) : undefined;
+    if (!multisig || items.length !== multisig.m + 1 || items[0] !== '') {
+      return [];
+    }
+    return items.slice(1);
+  }
+
+  /**
+   * The data pushed by a push-only scriptSig as hex, or null if it runs any other opcode,
+   * in which case no template can be trusted to check what it pushes.
+   */
+  private static getScriptSigPushes(scriptsig: string | undefined): string[] | null {
+    if (!scriptsig) {
+      return [];
+    }
+    let chunks: (number | Buffer)[] | null;
+    try {
+      chunks = bitcoinjs.script.decompile(Buffer.from(scriptsig, 'hex'));
+    } catch {
+      return null;
+    }
+    if (!chunks) {
+      return null;
+    }
+    const pushes: string[] = [];
+    for (const chunk of chunks) {
+      if (Buffer.isBuffer(chunk)) {
+        pushes.push(chunk.toString('hex'));
+      } else if (chunk === bitcoinjs.opcodes.OP_0) {
+        pushes.push('');
+      } else {
+        return null;
+      }
+    }
+    return pushes;
   }
 
   static getTransactionFlags(tx: TransactionExtended, height?: number): number {
@@ -884,7 +993,7 @@ export class Common {
       flags |= TransactionFlags.nonstandard;
     }
 
-    const replayPossible = Common.getReplayRisk(tx, (flags & TransactionFlags.sighash_unified) !== 0n);
+    const replayPossible = Common.getReplayRisk(tx);
     if (replayPossible === true) {
       flags |= TransactionFlags.replay_possible;
     } else if (replayPossible === false) {
