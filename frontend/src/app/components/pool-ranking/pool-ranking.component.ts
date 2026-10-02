@@ -113,11 +113,13 @@ export class PoolRankingComponent implements OnInit {
   }
 
   generatePoolsChartSerieData(miningStats) {
+    // A pool needs this share of blocks to get its own slice; below it they are
+    // folded into 'Other'. Kept uniform so phone and desktop show the same pools.
     let poolShareThreshold = 0.5;
     if (isMobile()) {
-      poolShareThreshold = 2;
+      poolShareThreshold = 0.5;
     } else if (this.widget) {
-      poolShareThreshold = 1;
+      poolShareThreshold = 0.5;
     }
 
     const data: object[] = [];
@@ -179,40 +181,42 @@ export class PoolRankingComponent implements OnInit {
       } as PieSeriesOption);
     });
 
-    const percentage = totalShareOther.toFixed(2) + '%';
+    if (totalShareOther > 0) {
+      const percentage = totalShareOther.toFixed(2) + '%';
 
-    // 'Other'
-    data.push({
-      itemStyle: {
-        color: '#6b6b6b',
-      },
-      value: totalShareOther,
-      name:  $localize`Other (${percentage})`,
-      label: {
-        overflow: 'none',
-        color: 'var(--tooltip-grey)',
-        alignTo: 'edge',
-        edgeDistance: edgeDistance
-      },
-      tooltip: {
-        backgroundColor: 'rgba(17, 19, 31, 1)',
-        borderRadius: 4,
-        shadowColor: 'rgba(0, 0, 0, 0.5)',
-        textStyle: {
-          color: 'var(--tooltip-grey)',
+      // 'Other'
+      data.push({
+        itemStyle: {
+          color: '#6b6b6b',
         },
-        borderColor: '#000',
-        formatter: () => {
-          const i = totalBlockOther.toString();
-          if (['24h', '3d', '1w'].includes(this.miningWindowPreference)) {
-            return `<b style="color: white">` + $localize`Other (${percentage})` + `</b><br>` + totalEstimatedHashrateOther.toFixed(2) + ' ' + miningStats.miningUnits.hashrateUnit + `<br>` + $localize`${ i }:INTERPOLATION: blocks`;
-          } else {
-            return `<b style="color: white">` + $localize`Other (${percentage})` + `</b><br>` + $localize`${ i }:INTERPOLATION: blocks`;
+        value: totalShareOther,
+        name:  $localize`Other (${percentage})`,
+        label: {
+          overflow: 'none',
+          color: 'var(--tooltip-grey)',
+          alignTo: 'edge',
+          edgeDistance: edgeDistance
+        },
+        tooltip: {
+          backgroundColor: 'rgba(17, 19, 31, 1)',
+          borderRadius: 4,
+          shadowColor: 'rgba(0, 0, 0, 0.5)',
+          textStyle: {
+            color: 'var(--tooltip-grey)',
+          },
+          borderColor: '#000',
+          formatter: () => {
+            const i = totalBlockOther.toString();
+            if (['24h', '3d', '1w'].includes(this.miningWindowPreference)) {
+              return `<b style="color: white">` + $localize`Other (${percentage})` + `</b><br>` + totalEstimatedHashrateOther.toFixed(2) + ' ' + miningStats.miningUnits.hashrateUnit + `<br>` + $localize`${ i }:INTERPOLATION: blocks`;
+            } else {
+              return `<b style="color: white">` + $localize`Other (${percentage})` + `</b><br>` + $localize`${ i }:INTERPOLATION: blocks`;
+            }
           }
-        }
-      },
-      data: 9999 as any,
-    } as PieSeriesOption);
+        },
+        data: 9999 as any,
+      } as PieSeriesOption);
+    }
 
     return data;
   }

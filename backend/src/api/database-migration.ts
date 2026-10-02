@@ -7,7 +7,7 @@ import cpfpRepository from '../repositories/CpfpRepository';
 import { RowDataPacket } from 'mysql2';
 
 class DatabaseMigration {
-  private static currentVersion = 106;
+  private static currentVersion = 108;
   private queryTimeout = 3600_000;
   private statisticsAddedIndexed = false;
   private uniqueLogs: string[] = [];
@@ -1221,6 +1221,18 @@ class DatabaseMigration {
         await this.$executeQuery(`UPDATE state SET number = 929700 WHERE name = 'last_bitcoin_block_audit';`);
       }
       await this.updateToSchemaVersion(106);
+    }
+
+    if (databaseSchemaVersion < 107 && isBitcoin === true) {
+      // Widen the header column to fit larger block headers (e.g. Bitcoin Knots v2 BLAKE2b headers)
+      await this.$executeQuery('ALTER TABLE `blocks` MODIFY `header` varchar(500) NOT NULL');
+      await this.updateToSchemaVersion(107);
+    }
+
+    if (databaseSchemaVersion < 108) {
+      // Flag pools whose templates are built with DATUM, so miner names can be parsed from the coinbase
+      await this.$executeQuery('ALTER TABLE `pools` ADD datum TINYINT(1) NOT NULL DEFAULT 0');
+      await this.updateToSchemaVersion(108);
     }
   }
 

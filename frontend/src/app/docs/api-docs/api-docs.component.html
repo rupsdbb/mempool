@@ -12,7 +12,7 @@
         <div id="disclaimer">
           <table *ngIf="!mobileViewport"><tr><td><app-svg-images name="warning" class="disclaimer-warning" viewBox="0 0 304 304" fill="#ffc107" width="50" height="50"></app-svg-images></td><td> <ng-container *ngTemplateOutlet="faqDisclaimer"></ng-container></td></tr></table>
           <div *ngIf="mobileViewport"><app-svg-images name="warning" class="disclaimer-warning" viewBox="0 0 304 304" fill="#ffc107" width="50" height="50"></app-svg-images><ng-container *ngTemplateOutlet="faqDisclaimer"></ng-container></div>
-          <ng-template #faqDisclaimer i18n="faq.big-disclaimer"><p><b>mempool.space merely provides data about the Bitcoin network.</b> It cannot help you with retrieving funds, wallet issues, etc.</p><p>For any such requests, you need to get in touch with the entity that helped make the transaction (wallet software, exchange company, etc).</p></ng-template>
+          <ng-template #faqDisclaimer i18n="faq.big-disclaimer"><p><b>mempool merely provides data about the Bitcoin network.</b> It cannot help you with retrieving funds, wallet issues, etc.</p><p>For any such requests, you need to get in touch with the entity that helped make the transaction (wallet software, exchange company, etc).</p></ng-template>
         </div>
 
         <div class="doc-item-container" *ngFor="let item of faq">
@@ -234,7 +234,7 @@
 </ng-template>
 
 <ng-template type="what-is-a-mempool-explorer">
-  <p>A mempool explorer is a tool that enables you to view real-time and historical information about a node's mempool, visualize its transactions, and search and view those transactions.</p><p>The mempool.space website invented the concept of visualizing a Bitcoin node's mempool as <b>projected blocks</b>. These blocks are the inspiration for our half-filled block logo.</p><p>Projected blocks are on the left of the dotted white line, and confirmed blocks are on the right.</p>
+  <p>A mempool explorer is a tool that enables you to view real-time and historical information about a node's mempool, visualize its transactions, and search and view those transactions.</p><p>The mempool website invented the concept of visualizing a Bitcoin node's mempool as <b>projected blocks</b>. These blocks are the inspiration for our half-filled block logo.</p><p>Projected blocks are on the left of the dotted white line, and confirmed blocks are on the right.</p>
   <div class="blockchain-wrapper" [dir]="timeLtr ? 'rtl' : 'ltr'" [class.time-ltr]="timeLtr">
     <div class="position-container">
       <span>
@@ -314,14 +314,14 @@
 </ng-template>
 
 <ng-template type="how-big-is-mempool-used-by-mempool-space">
-  <p>mempool.space uses multiple Bitcoin nodes to obtain data: some with the default 300MB mempool memory limit (call these Small Nodes) and others with a much larger mempool memory limit (call these Big Nodes).</p>
-  <p>Many nodes on the Bitcoin network are configured to run with the default 300MB mempool memory setting. When all 300MB of memory are used up, such nodes will reject transactions below a certain threshold feerate. Running Small Nodes allows mempool.space to tell you what this threshold feerate is—this is the "Purging" feerate that shows on the front page when mempools are full, which you can use to be reasonably sure that your transaction will be widely propagated.</p>
-    <p>Big Node mempools are so big that they don't need to reject (or purge) transactions. Such nodes allow for mempool.space to provide you with information on any pending transaction it has received—no matter how congested the mempool is, and no matter how low-feerate or low-priority the transaction is.</p>
+  <p>mempool uses multiple Bitcoin nodes to obtain data: some with the default 300MB mempool memory limit (call these Small Nodes) and others with a much larger mempool memory limit (call these Big Nodes).</p>
+  <p>Many nodes on the Bitcoin network are configured to run with the default 300MB mempool memory setting. When all 300MB of memory are used up, such nodes will reject transactions below a certain threshold feerate. Running Small Nodes allows mempool to tell you what this threshold feerate is—this is the "Purging" feerate that shows on the front page when mempools are full, which you can use to be reasonably sure that your transaction will be widely propagated.</p>
+    <p>Big Node mempools are so big that they don't need to reject (or purge) transactions. Such nodes allow for mempool to provide you with information on any pending transaction it has received—no matter how congested the mempool is, and no matter how low-feerate or low-priority the transaction is.</p>
 </ng-template>
 
 <ng-template type="what-is-memory-usage">
   <p>Memory usage on the front page refers to the real-time amount of system memory used by a Bitcoin node's mempool. This memory usage number is always higher than the total size of all pending transactions in the mempool due to indexes, pointers, and other overhead used by Bitcoin Core for storage and processing.</p>
-  <p>mempool.space shows the memory usage of a Bitcoin node that has a very high mempool memory limit. As a result, when mempools fill up, you may notice memory usage on mempool.space go beyond 300MB. This is not a mistake—this memory usage figure is high because it's for a Bitcoin node that isn't rejecting (or evicting) transactions. Consider it to be another data point to give you an idea of how congested the mempool is relative to the default memory limit of 300MB.</p>
+  <p>mempool shows the memory usage of a Bitcoin node that has a very high mempool memory limit. As a result, when mempools fill up, you may notice memory usage on mempool go beyond 300MB. This is not a mistake—this memory usage figure is high because it's for a Bitcoin node that isn't rejecting (or evicting) transactions. Consider it to be another data point to give you an idea of how congested the mempool is relative to the default memory limit of 300MB.</p>
   <p>A Bitcoin node running the default 300MB mempool memory limit, like most Raspberry Pi nodes, will never go past 300MB of memory usage.</p>
 </ng-template>
 
@@ -359,7 +359,7 @@
     <li><span class="block-audit-highlight-color removed">■</span><code>Removed</code><p>A transaction is highlighted bright pink if it is present in the expected block, not present in the actual block, and qualifies as neither recently-broadcasted nor marginal-fee. In other words, it has been in the mempool long enough to be widely propagated and has a feerate that is well within the range expected for the block. There is a chance such a transaction may have been intentionally excluded from the block.<p>Removed transactions do negatively affect <a [routerLink]="['/docs/faq' | relativeUrl]" fragment="what-is-block-health">block health</a>.</p></li>
   </ul>
   <p>See how results of the block audit are used to devise the block health score <a [routerLink]="['/docs/faq' | relativeUrl]" fragment="what-is-block-health">below</a>.</p>
-    <p class='note'>Because of this feature's resource usage and availability requirements, it is only supported on official mempool.space instances.</p>
+    <p class='note'>Because of this feature's resource usage and availability requirements, it is only supported on official mempool instances.</p>
 </ng-template>
 
 <ng-template type="what-is-block-health">
@@ -374,7 +374,7 @@
   </ul>
   <p>As a result, block health is <i>not</i> intended to be a measure of how closely an expected block resembles an actual block. The actual block can be vastly different from the expected block, but if no transactions appear to be intentionally excluded, it will have a high health rating (<a [routerLink]="['/block/0000000000000000000515e202c8ae73c8155fc472422d7593af87aa74f2cf3d']">extreme example</a>).</p>
   <p>See more context in our FAQ on <a [routerLink]="['/docs/faq' | relativeUrl]" fragment="how-do-block-audits-work">block audits</a>.</p>
-    <p class='note'>Because of this feature's resource usage and availability requirements, it is only supported on official mempool.space instances.</p>
+    <p class='note'>Because of this feature's resource usage and availability requirements, it is only supported on official mempool instances.</p>
 </ng-template>
 
 <ng-template type="how-do-mempool-goggles-work">
@@ -461,6 +461,7 @@
         <dt>sighash_single</dt>
         <dt>sighash_default</dt>
         <dt>sighash_anyonecanpay</dt>
+        <dt>sighash_unified</dt>
       </dl>
     </dd>
   </dl>
@@ -477,7 +478,7 @@
   <p>Most transactions use more of the weight limit than the sigop limit. However, some transactions use a disproportionate number of sigops compared to their weight.</p>
   <p>To account for this, Bitcoin Core calculates and uses an "adjusted vsize" equal 5 times the number of sigops, or the unadjusted vsize, whichever is larger.</p>
   <p>Then, during block template construction, Bitcoin Core selects transactions in descending order of fee rate measured in satoshis per <i>adjusted vsize</i></p>
-  <p>On mempool.space, effective fee rates for unconfirmed transactions are also measured in terms of satoshis per adjusted vsize, after accounting for CPFP relationships and other dependencies.</p>
+  <p>On mempool, effective fee rates for unconfirmed transactions are also measured in terms of satoshis per adjusted vsize, after accounting for CPFP relationships and other dependencies.</p>
 </ng-template>
 
 <ng-template type="why-do-the-projected-block-fee-ranges-overlap">
@@ -489,7 +490,7 @@
 </ng-template>
 
 <ng-template type="who-runs-this-website">
-  The official mempool.space website is operated by The Mempool Open Source Project. See more information on our <a [routerLink]="['/about']">About page</a>. There are also many unofficial instances of this website operated by individual members of the Bitcoin community.
+  This website is an instance of The Mempool Open Source Project, operated independently.
 </ng-template>
 
 <ng-template type="host-my-own-instance-raspberry-pi">
@@ -506,5 +507,5 @@
 </ng-template>
 
 <ng-template type="address-lookup-issues">
-  <p>If you're getting errors when doing address lookups, it's probably because of your Electrum server backend.</p><p>Mempool uses an Electrum server to do address lookups. There are several implementations of the Electrum server protocol, and Mempool can use any of them, but the implementation you use affects performance:</p><ol><li><a href="https://github.com/romanz/electrs" target="_blank">romanz/electrs</a>. This is a common choice for its low resource requirements, and most full-node distros use it. But while this implementation works great for basic queries, it will struggle with heavier ones (e.g. looking up addresses with many transactions)—especially when running on low-power hardware like a Raspberry Pi.</li><li><a href="https://github.com/cculianu/Fulcrum" target="_blank">Fulcrum</a>. Fulcrum requires more resources than romanz/electrs but it can still run on a Raspberry Pi, and it handles heavy queries much more efficiently. If you're having issues with romanz/electrs, Fulcrum is worth a try.</li><li><a href="https://github.com/mempool/electrs" target="_blank">mempool/electrs</a>. If you have stronger hardware, you could consider running mempool/electrs, the backend that powers mempool.space. It's a fork of Blockstream's Esplora, which is in turn a fork of romanz/electrs, intended for maximum performance and larger-scale deployments.</li></ol>
+  <p>If you're getting errors when doing address lookups, it's probably because of your Electrum server backend.</p><p>Mempool uses an Electrum server to do address lookups. There are several implementations of the Electrum server protocol, and Mempool can use any of them, but the implementation you use affects performance:</p><ol><li><a href="https://github.com/romanz/electrs" target="_blank">romanz/electrs</a>. This is a common choice for its low resource requirements, and most full-node distros use it. But while this implementation works great for basic queries, it will struggle with heavier ones (e.g. looking up addresses with many transactions)—especially when running on low-power hardware like a Raspberry Pi.</li><li><a href="https://github.com/cculianu/Fulcrum" target="_blank">Fulcrum</a>. Fulcrum requires more resources than romanz/electrs but it can still run on a Raspberry Pi, and it handles heavy queries much more efficiently. If you're having issues with romanz/electrs, Fulcrum is worth a try.</li><li><a href="https://github.com/mempool/electrs" target="_blank">mempool/electrs</a>. If you have stronger hardware, you could consider running mempool/electrs, the backend that powers mempool. It's a fork of Blockstream's Esplora, which is in turn a fork of romanz/electrs, intended for maximum performance and larger-scale deployments.</li></ol>
 </ng-template>

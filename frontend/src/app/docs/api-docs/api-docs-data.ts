@@ -12135,7 +12135,7 @@ export const restApiDocsData = [
       Filters can be applied:<ul>
       <li><code>status</code>: <code>all</code>, <code>requested</code>, <code>accelerating</code>, <code>mined</code>, <code>completed</code>, <code>failed</code></li>
       <li><code>timeframe</code>: <code>24h</code>, <code>3d</code>, <code>1w</code>, <code>1m</code>, <code>3m</code>, <code>6m</code>, <code>1y</code>, <code>2y</code>, <code>3y</code>, <code>4y</code>, <code>all</code></li>
-      <li><code>minedByPoolUniqueId</code>: any id from <a target="_blank" href="https://github.com/mempool/mining-pools/blob/master/pools-v2.json">pools-v2.json</a>
+      <li><code>minedByPoolUniqueId</code>: any id from <a target="_blank" href="https://github.com/Retropex/mining-pools/blob/master/pools-v2.json">pools-v2.json</a>
       <li><code>blockHash</code>: a block hash</a>
       <li><code>blockHeight</code>: a block height</a>
       <li><code>page</code>: the requested page number if using pagination <i>(min: 1)</i></a>
@@ -12721,7 +12721,7 @@ export const faqData = [
     category: 'advanced',
     showConditions: bitcoinNetworks,
     fragment: 'how-big-is-mempool-used-by-mempool-space',
-    title: 'How big is the mempool used by mempool.space?',
+    title: 'How big is the mempool used by mempool?',
     options: { officialOnly: true },
   },
   {

@@ -71,7 +71,7 @@
 
             <div class="block-column canonical">
               <div class="block-label" i18n="chain-tips.winning-block"><span class="badge badge-success">Winning</span></div>
-              <div class="bitcoin-block mined-block canonical-block" [style.background]="getBlockGradient(chainTip.canonical)" [routerLink]="[('/block/' + chainTip.canonical.id) | relativeUrl]">
+              <div *ngIf="chainTip.canonical; else noCanonicalBlock" class="bitcoin-block mined-block canonical-block" [style.background]="getBlockGradient(chainTip.canonical)" [routerLink]="[('/block/' + chainTip.canonical.id) | relativeUrl]">
                 <div class="block-body">
                   <div *ngIf="chainTip.canonical?.extras; else emptyCanonicalBlockFees" class="fees">
                     ~<app-fee-rate [fee]="chainTip.canonical.extras.medianFee" unitClass="" rounding="1.0-0"></app-fee-rate>
@@ -100,6 +100,13 @@
                   </div>
                 </div>
               </div>
+              <ng-template #noCanonicalBlock>
+                <div class="bitcoin-block mined-block canonical-block">
+                  <div class="block-body">
+                    <div class="fees" i18n="chain-tips.no-canonical-block">No block at this height</div>
+                  </div>
+                </div>
+              </ng-template>
               <div class="animated" *ngIf="chainTip.canonical?.extras?.pool != undefined">
                 <a class="badge" [class.miner-name]="chainTip.canonical.extras.pool.minerNames?.length > 1 && chainTip.canonical.extras.pool.minerNames[1] != ''" [routerLink]="[('/mining/pool/' + chainTip.canonical.extras.pool.slug) | relativeUrl]">
                   <ng-container *ngIf="chainTip.canonical.extras.pool.minerNames?.length > 1 && chainTip.canonical.extras.pool.minerNames[1] != ''; else canonicalBlockCentralisedPool">

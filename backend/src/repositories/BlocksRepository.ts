@@ -39,6 +39,7 @@ interface DatabaseBlock {
   poolId: number;
   poolName: string;
   poolSlug: string;
+  poolDatum: boolean;
   avgFee: number;
   avgFeeRate: number;
   coinbaseRaw: string;
@@ -85,6 +86,7 @@ const BLOCK_DB_FIELDS = `
   pools.unique_id AS poolId,
   pools.name AS poolName,
   pools.slug AS poolSlug,
+  pools.datum AS poolDatum,
   blocks.avg_fee AS avgFee,
   blocks.avg_fee_rate AS avgFeeRate,
   blocks.coinbase_raw AS coinbaseRaw,
@@ -1273,6 +1275,8 @@ class BlocksRepository {
     extras.segwitTotalSize = dbBlk.segwitTotalSize;
     extras.segwitTotalWeight = dbBlk.segwitTotalWeight;
     extras.header = dbBlk.header,
+    extras.headerVersion = Common.getBlockHeaderVersion(dbBlk.header);
+    extras.headerV2 = Common.getBlockHeaderV2Fields(dbBlk.header);
     extras.utxoSetChange = dbBlk.utxoSetChange;
     extras.utxoSetSize = dbBlk.utxoSetSize;
     extras.totalInputAmt = dbBlk.totalInputAmt;
@@ -1331,7 +1335,7 @@ class BlocksRepository {
       }
     }
 
-    if (extras.pool.name === 'OCEAN') {
+    if (dbBlk.poolDatum) {
       extras.pool.minerNames = parseDATUMTemplateCreator(extras.coinbaseRaw);
     }
 

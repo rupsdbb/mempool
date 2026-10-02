@@ -87,6 +87,13 @@ footer .row.link-tree {
   display: flex;
   justify-content: space-between;
   flex-wrap: nowrap;
+  // Phantom fourth column. The Legal column used to occupy 145px here, and
+  // space-between divides the remaining width between the columns, so without
+  // it Explore/Learn/Tools drift apart. Keeps them at their original offsets.
+  &::after {
+    content: '';
+    flex: 0 0 145px;
+  }
   &.services {
     @media (min-width: 1201px) {
       padding-left: 65px;
@@ -225,6 +232,11 @@ footer .nowrap {
     footer .row.link-tree {
       display: block;
       text-align: center;
+
+      // columns stack here, so the spacer would just be dead space
+      &::after {
+        content: none;
+      }
     }
 
     footer .link-tree .links {

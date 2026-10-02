@@ -215,6 +215,18 @@ export interface BlockExtension {
     status: 'invalid' | 'active' | 'valid-fork' | 'valid-headers' | 'headers-only';
     prevhash: string;
   }[];
+  header?: string;
+  headerVersion?: number;
+  headerV2?: BlockHeaderV2 | null;
+}
+
+export interface BlockHeaderV2 {
+  nonce2: number;
+  nonce3: number;
+  extranonce: string;
+  h1Flags: number;
+  xorKey: string;
+  xorKeyMaskClearBits: number;
 }
 
 export interface BlockExtended extends Block {
@@ -506,5 +518,6 @@ export interface ChainTip {
 
 export interface StaleTip extends ChainTip {
   stale: BlockExtended;
-  canonical: BlockExtended;
+  // absent when the stale block sits above the active tip, where no canonical block exists
+  canonical?: BlockExtended;
 }

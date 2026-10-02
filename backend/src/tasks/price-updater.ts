@@ -9,6 +9,7 @@ import CoinbaseApi from './price-feeds/coinbase-api';
 import GeminiApi from './price-feeds/gemini-api';
 import KrakenApi from './price-feeds/kraken-api';
 import FreeCurrencyApi from './price-feeds/free-currency-api';
+import NeoxexApi from './price-feeds/neoxex-api';
 
 export interface PriceFeed {
   name: string;
@@ -58,6 +59,9 @@ class PriceUpdater {
   private latestPrices: ApiPrice;
   private latestGoodPrices: ApiPrice;
   private currencyConversionFeed: ConversionFeed | undefined;
+  // BTCB2/BTC cross rate from NeoxEX; -1 while unknown
+  private ratioFeed: NeoxexApi = new NeoxexApi();
+  private xbtBtcRatio: number = -1;
   private newCurrencies: string[] = ['BGN', 'BRL', 'CNY', 'CZK', 'DKK', 'HKD', 'HRK', 'HUF', 'IDR', 'ILS', 'INR', 'ISK', 'KRW', 'MXN', 'MYR', 'NOK', 'NZD', 'PHP', 'PLN', 'RON', 'RUB', 'SEK', 'SGD', 'THB', 'TRY', 'ZAR'];
   private lastTimeConversionsRatesFetched: number = 0;
   private latestConversionsRatesFromFeed: ConversionRates = { USD: -1 };
@@ -236,6 +240,20 @@ class PriceUpdater {
       return;
     }
 
+    // The fiat feeds price BTC, not this chain's coin. Convert via the
+    // BTCB2/BTC cross rate; without it we would publish BTC prices.
+    try {
+      this.xbtBtcRatio = await this.ratioFeed.$fetchRatio();
+      logger.debug(`${this.ratioFeed.name} ${this.ratioFeed.pair} ratio: ${this.xbtBtcRatio}`, logger.tags.mining);
+    } catch (e) {
+      this.xbtBtcRatio = -1;
+      logger.debug(`Could not fetch ${this.ratioFeed.pair} ratio at ${this.ratioFeed.name}. Reason: ${(e instanceof Error ? e.message : e)}`, logger.tags.mining);
+    }
+    if (this.xbtBtcRatio <= 0) {
+      logger.debug(`No ${this.ratioFeed.pair} ratio available, skipping this price update`, logger.tags.mining);
+      return;
+    }
+
     for (const currency of this.currencies) {
       let prices: number[] = [];
 
@@ -262,7 +280,7 @@ class PriceUpdater {
       if (prices.length === 0) {
         this.setLatestPrice(currency, -1);
       } else {
-        this.setLatestPrice(currency, Math.round(getMedian(prices)));
+        this.setLatestPrice(currency, Math.round(getMedian(prices) * this.xbtBtcRatio));
       }
     }
 
@@ -355,6 +373,20 @@ class PriceUpdater {
    * @asyncUnsafe
    */
   private async $insertMissingRecentPrices(type: 'hour' | 'day'): Promise<void> {
+    // Historical fiat prices are BTC prices and need the same cross rate applied,
+    // otherwise they are stored more than two orders of magnitude too high.
+    if (this.xbtBtcRatio <= 0) {
+      try {
+        this.xbtBtcRatio = await this.ratioFeed.$fetchRatio();
+      } catch (e) {
+        this.xbtBtcRatio = -1;
+      }
+    }
+    if (this.xbtBtcRatio <= 0) {
+      logger.debug(`No ${this.ratioFeed.pair} ratio available, skipping historical price insertion`, logger.tags.mining);
+      return;
+    }
+
     const existingPriceTimes = await PricesRepository.$getPricesTimes();
 
     logger.debug(`Fetching ${type === 'day' ? 'dai' : 'hour'}ly price history from exchanges and saving missing ones into the database`, logger.tags.mining);
@@ -402,7 +434,7 @@ class PriceUpdater {
         if (grouped[time][currency].length === 0) {
           continue;
         }
-        prices[currency] = Math.round(getMedian(grouped[time][currency]));
+        prices[currency] = Math.round(getMedian(grouped[time][currency]) * this.xbtBtcRatio);
       }
       await PricesRepository.$savePrices(parseInt(time, 10), prices);
       ++totalInserted;
