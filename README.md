@@ -38,7 +38,7 @@ or Retropex/electrs branch `mempool` for the esplora-style server.
 
 BLAKE2b header fields and a chain badge on block pages; a replay-protection badge
 in the transaction features row; SIGHASH_UNIFIED colours and filter; hashrate in
-PH/s; no minimum share threshold hiding small pools; English-only build.
+PH/s; no minimum share threshold hiding small pools.
 
 ### Database migrations
 
@@ -97,7 +97,6 @@ Serve `frontend/dist/mempool/browser` with nginx and proxy `/api` to the backend
 
 - **Historical prices are approximate.** NeoxEX exposes no candles endpoint, so past
   BTC prices are scaled by the *current* cross rate. Live prices are exact.
-- **English only.** Other locales are not built; the language selector lists one entry.
 - **Address pages depend on electrs.** They will fail against an unpatched server.
 
 ## Credits
