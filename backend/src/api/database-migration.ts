@@ -7,7 +7,7 @@ import cpfpRepository from '../repositories/CpfpRepository';
 import { RowDataPacket } from 'mysql2';
 
 class DatabaseMigration {
-  private static currentVersion = 108;
+  private static currentVersion = 109;
   private queryTimeout = 3600_000;
   private statisticsAddedIndexed = false;
   private uniqueLogs: string[] = [];
@@ -1223,17 +1223,55 @@ class DatabaseMigration {
       await this.updateToSchemaVersion(106);
     }
 
+    // Each step below checks the schema rather than trusting the version number,
+    // so a database can be re-migrated without failing on a column that exists.
+
     if (databaseSchemaVersion < 107 && isBitcoin === true) {
-      // Widen the header column to fit larger block headers (e.g. Bitcoin Knots v2 BLAKE2b headers)
+      // The v2 BLAKE2b header serialises to 328 hex characters; the column holds 160
       await this.$executeQuery('ALTER TABLE `blocks` MODIFY `header` varchar(500) NOT NULL');
       await this.updateToSchemaVersion(107);
     }
 
     if (databaseSchemaVersion < 108) {
       // Flag pools whose templates are built with DATUM, so miner names can be parsed from the coinbase
-      await this.$executeQuery('ALTER TABLE `pools` ADD datum TINYINT(1) NOT NULL DEFAULT 0');
+      if (await this.$hasColumn('pools', 'datum') === false) {
+        await this.$executeQuery('ALTER TABLE `pools` ADD datum TINYINT(1) NOT NULL DEFAULT 0');
+      }
       await this.updateToSchemaVersion(108);
     }
+
+    if (databaseSchemaVersion < 109 && isBitcoin === true) {
+      // BLAKE2b (header v2) blocks indexed from esplora, or from a Bitcoin Knots node older than
+      // v29.4.2, were saved with a SHA256d-style difficulty. Rewrite them from bits as
+      // difficulty_blake2b, matching how they are stored now.
+      const isHeaderV2 = (table: string): string => `LENGTH(${table}.header) >= 328 AND CONV(SUBSTRING(${table}.header, 7, 2), 16, 10) >= 128`;
+      const [bitsRows]: any[] = await DB.query(`SELECT DISTINCT bits FROM blocks WHERE ${isHeaderV2('blocks')}`);
+      for (const row of bitsRows) {
+        await DB.query(`UPDATE blocks SET difficulty = ? WHERE bits = ? AND ${isHeaderV2('blocks')}`, [Common.getBlake2bDifficulty(row.bits), row.bits]);
+      }
+      // `adjustment` is a ratio between two blocks and stays valid; only the absolute difficulty changes unit
+      await this.$executeQuery(`
+        UPDATE difficulty_adjustments
+        JOIN blocks ON blocks.height = difficulty_adjustments.height AND blocks.stale = 0
+        SET difficulty_adjustments.difficulty = blocks.difficulty
+        WHERE ${isHeaderV2('blocks')}
+      `);
+      await this.updateToSchemaVersion(109);
+    }
+  }
+
+  /**
+   * Check whether a column exists, so a migration can be re-run safely.
+   * We query INFORMATION_SCHEMA rather than using "ADD COLUMN IF NOT EXISTS",
+   * which old mariadb 5.x does not support.
+   *
+   * @asyncUnsafe
+   */
+  private async $hasColumn(table: string, column: string): Promise<boolean> {
+    const query = `SELECT COUNT(1) hasColumn FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE table_schema=DATABASE() AND table_name=? AND column_name=?;`;
+    const [rows] = await DB.query(query, [table, column]);
+    return rows[0].hasColumn > 0;
   }
 
   /**

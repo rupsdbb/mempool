@@ -62,6 +62,11 @@ class PriceUpdater {
   // BTCB2/BTC cross rate from NeoxEX; -1 while unknown
   private ratioFeed: NeoxexApi = new NeoxexApi();
   private xbtBtcRatio: number = -1;
+  private xbtBtcRatioTime: number = 0;
+  // A brief exchange outage should not stop price updates, but a stale rate is
+  // worse than none: the coin is priced two orders of magnitude below BTC, so a
+  // rate that has drifted produces visibly wrong fiat values.
+  private readonly xbtBtcRatioMaxAgeSeconds: number = 6 * 3600;
   private newCurrencies: string[] = ['BGN', 'BRL', 'CNY', 'CZK', 'DKK', 'HKD', 'HRK', 'HUF', 'IDR', 'ILS', 'INR', 'ISK', 'KRW', 'MXN', 'MYR', 'NOK', 'NZD', 'PHP', 'PLN', 'RON', 'RUB', 'SEK', 'SGD', 'THB', 'TRY', 'ZAR'];
   private lastTimeConversionsRatesFetched: number = 0;
   private latestConversionsRatesFromFeed: ConversionRates = { USD: -1 };
@@ -242,15 +247,9 @@ class PriceUpdater {
 
     // The fiat feeds price BTC, not this chain's coin. Convert via the
     // BTCB2/BTC cross rate; without it we would publish BTC prices.
-    try {
-      this.xbtBtcRatio = await this.ratioFeed.$fetchRatio();
-      logger.debug(`${this.ratioFeed.name} ${this.ratioFeed.pair} ratio: ${this.xbtBtcRatio}`, logger.tags.mining);
-    } catch (e) {
-      this.xbtBtcRatio = -1;
-      logger.debug(`Could not fetch ${this.ratioFeed.pair} ratio at ${this.ratioFeed.name}. Reason: ${(e instanceof Error ? e.message : e)}`, logger.tags.mining);
-    }
-    if (this.xbtBtcRatio <= 0) {
-      logger.debug(`No ${this.ratioFeed.pair} ratio available, skipping this price update`, logger.tags.mining);
+    await this.$updateRatio();
+    if (this.$ratioIsUsable() === false) {
+      logger.debug(`No recent ${this.ratioFeed.pair} ratio available, skipping this price update`, logger.tags.mining);
       return;
     }
 
@@ -372,18 +371,37 @@ class PriceUpdater {
    *
    * @asyncUnsafe
    */
+  /**
+   * Refresh the BTCB2/BTC cross rate, keeping the previous value on failure.
+   *
+   * @asyncSafe
+   */
+  private async $updateRatio(): Promise<void> {
+    try {
+      const ratio = await this.ratioFeed.$fetchRatio();
+      if (ratio > 0) {
+        this.xbtBtcRatio = ratio;
+        this.xbtBtcRatioTime = Math.round(new Date().getTime() / 1000);
+        logger.debug(`${this.ratioFeed.name} ${this.ratioFeed.pair} ratio: ${ratio}`, logger.tags.mining);
+      }
+    } catch (e) {
+      logger.debug(`Could not fetch ${this.ratioFeed.pair} ratio at ${this.ratioFeed.name}, keeping the previous value. Reason: ${(e instanceof Error ? e.message : e)}`, logger.tags.mining);
+    }
+  }
+
+  private $ratioIsUsable(): boolean {
+    const age = Math.round(new Date().getTime() / 1000) - this.xbtBtcRatioTime;
+    return this.xbtBtcRatio > 0 && age <= this.xbtBtcRatioMaxAgeSeconds;
+  }
+
   private async $insertMissingRecentPrices(type: 'hour' | 'day'): Promise<void> {
     // Historical fiat prices are BTC prices and need the same cross rate applied,
     // otherwise they are stored more than two orders of magnitude too high.
-    if (this.xbtBtcRatio <= 0) {
-      try {
-        this.xbtBtcRatio = await this.ratioFeed.$fetchRatio();
-      } catch (e) {
-        this.xbtBtcRatio = -1;
-      }
+    if (this.$ratioIsUsable() === false) {
+      await this.$updateRatio();
     }
-    if (this.xbtBtcRatio <= 0) {
-      logger.debug(`No ${this.ratioFeed.pair} ratio available, skipping historical price insertion`, logger.tags.mining);
+    if (this.$ratioIsUsable() === false) {
+      logger.debug(`No recent ${this.ratioFeed.pair} ratio available, skipping historical price insertion`, logger.tags.mining);
       return;
     }
 

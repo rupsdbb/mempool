@@ -287,6 +287,10 @@ export const TransactionFlags = {
   sighash_default:0b00001000_00000000_00000000_00000000_00000000_00000000n,
   sighash_acp:    0b00010000_00000000_00000000_00000000_00000000_00000000n,
   sighash_unified:0b00100000_00000000_00000000_00000000_00000000_00000000n,
+  // Replay classification. Both unset means undetermined, e.g. when prevouts
+  // were skipped for a transaction with many inputs.
+  replay_protected:0b01000000_00000000_00000000_00000000_00000000_00000000n,
+  replay_possible:0b10000000_00000000_00000000_00000000_00000000_00000000n,
 };
 
 export interface BlockHeaderV2 {

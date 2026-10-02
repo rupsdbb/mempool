@@ -36,6 +36,9 @@ export namespace IEsploraApi {
     issuance?: Issuance;
     // Custom
     lazy?: boolean;
+    // Custom: height of the block funding this input, -1 when still unconfirmed
+    // and undefined when the prevout was not fetched. Used to classify replay risk.
+    prevoutHeight?: number;
   }
 
   interface Issuance {

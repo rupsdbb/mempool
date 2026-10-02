@@ -1,6 +1,7 @@
 import { TransactionExtended, MempoolTransactionExtended, TransactionMinerInfo } from '../mempool.interfaces';
 import { IEsploraApi } from './bitcoin/esplora-api.interface';
 import { Common } from './common';
+import blocks from './blocks';
 import bitcoinApi, { bitcoinCoreApi } from './bitcoin/bitcoin-api-factory';
 import * as bitcoinjs from 'bitcoinjs-lib';
 import logger from '../logger';
@@ -61,6 +62,17 @@ class TransactionUtils {
       if (!isFinite(Number(transaction.fee))) {
         transaction.fee = Object.values(transaction.fee || {}).reduce((total, output) => total + output, 0);
       }
+    }
+
+    // Confirmed transactions are converted on a path that does not classify them, so they
+    // reached the API without flags at all. Do it here, where prevouts and their heights
+    // are known, rather than in the bulk block conversion where it would cost an indexing
+    // pass. Clients cannot derive flags that depend on prevouts, such as replay risk.
+    if (addPrevouts && (transaction as TransactionExtended).flags === undefined) {
+      (transaction as TransactionExtended).flags = Common.getTransactionFlags(
+        transaction as TransactionExtended,
+        transaction.status?.block_height ?? blocks.getCurrentBlockHeight(),
+      );
     }
 
     if (addMempoolData || !transaction?.status?.confirmed) {
