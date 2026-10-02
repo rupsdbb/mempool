@@ -27,25 +27,33 @@ or Retropex/electrs branch `mempool` for the esplora-style server.
 | Area | Change |
 |---|---|
 | Block header | Parses the 164-byte v2 header — `nonce2`, `nonce3`, `extranonce`, `h1Flags`, `xorKey`, `xorKeyMaskClearBits`. Offsets verified against Knots `src/policy/../primitives/block.h` |
-| Difficulty | Reads `difficulty_blake2b` when the node omits `difficulty` (Knots #420 removed `getdifficulty`) |
+| Difficulty | Derived from `bits`, mirroring Knots' `GetBlockProof()`, so every BLAKE2b block stores expected-hash counts whatever the node version or code path. Falls back to `difficulty_blake2b` when a node omits `difficulty` (Knots #420 removed `getdifficulty`) |
 | Fee thresholds | Derived from `BLOCK_WEIGHT_UNITS` instead of the hardcoded 500,000/950,000 vsize, which pinned every tier to the minimum at 800,000 WU |
 | Sighash | `SIGHASH_UNIFIED` (0x20) — `0x21`–`0x23` and `0xa1`–`0xa3` |
 | Chain tips | Skips the canonical lookup for stale blocks above the active tip, where `getblockhash` throws |
 | Mining pools | DATUM pools matched first and flagged from the pools list, rather than hardcoding a single pool name |
-| Prices | Fiat price derived as `BTC/<fiat> × BTCB2/BTC`, the cross rate taken from [NeoxEX](https://neoxa.exchange) |
+| Prices | Fiat price derived as `BTC/<fiat> × BTCB2/BTC`, the cross rate taken from [NeoxEX](https://neoxa.exchange), held for up to six hours across a failed fetch |
+| Replay risk | Classified server-side from each input's funding height, since a replay needs the inputs to exist on the SHA256d chain. Exposed as transaction flags, so clients need not re-derive it |
 
 ### Frontend
 
-BLAKE2b header fields and a chain badge on block pages; a replay-protection badge
-in the transaction features row; SIGHASH_UNIFIED colours and filter; hashrate in
-PH/s; no minimum share threshold hiding small pools.
+BLAKE2b header fields and a chain badge on block pages; SIGHASH_UNIFIED colours
+and filter; hashrate in PH/s; no minimum share threshold hiding small pools.
+
+The transaction features row carries a replay-protection badge, shown only where
+the question applies. Outputs created at or after the fork do not exist on the
+SHA256d chain, so spending one makes a replay impossible and no badge appears.
+For transactions spending pre-fork outputs the badge is green when a
+SIGHASH_UNIFIED signature protects them, red when none does.
 
 ### Database migrations
 
-Two migrations run automatically on first start:
+Three migrations run automatically on first start. Each checks the schema rather
+than trusting the version number, so they can be re-run safely:
 
 - **107** — widens `blocks.header` from `varchar(160)` to `varchar(500)`; the v2 header is 328 hex characters
 - **108** — adds `pools.datum`, so DATUM pools are data-driven
+- **109** — rewrites the difficulty of BLAKE2b blocks stored in the SHA256d unit, and copies it to `difficulty_adjustments`
 
 Dump your database before upgrading an existing instance.
 
